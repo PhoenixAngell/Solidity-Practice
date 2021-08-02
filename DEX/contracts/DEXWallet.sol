@@ -6,11 +6,12 @@ import "./DEX.sol";
 import "./OpenZeppelinDependencies/IERC20.sol";
 import "./OpenZeppelinDependencies/SafeMath.sol";
 import "./OpenZeppelinDependencies/Ownable.sol";
+import "./DEXGetters.sol";
 
 
 //Create event for transferring ETH to/from private address;
 
-contract DEXWallet is Ownable {
+contract DEXWallet is Ownable, DEXGetters {
   using SafeMath for uint256;
 
   struct Token {
@@ -24,19 +25,22 @@ contract DEXWallet is Ownable {
   bytes32[] public tokenList;
   bytes32 public ETH = keccak256(abi.encodePacked("ETH"));
 
-  modifier tokenExists(bytes32 ticker){
+  modifier tokenExists(string memory ticker_){
+    bytes32 ticker = _keccak256(ticker_);
     if (ticker != ETH){
     require(tokenMapping[ticker].tokenAddress != address(0), "Token non-existent");
     }
     _;
   }
 
-  function addToken(bytes32 _ticker, address _tokenAddress) external onlyOwner {
+  function addToken(string memory ticker_, address _tokenAddress) external onlyOwner {
+    bytes32 _ticker = _keccak256(ticker_);
     tokenMapping[_ticker] = Token(_ticker,_tokenAddress);
     tokenList.push(_ticker);
   }
 
-  function deposit(bytes32 _ticker, uint _amount) external tokenExists(_ticker) {
+  function deposit(string memory ticker_, uint _amount) external tokenExists(ticker_) {
+    bytes32 _ticker = _keccak256(ticker_);
     balances[msg.sender][_ticker] = balances[msg.sender][_ticker].add(_amount);
     IERC20(tokenMapping[_ticker].tokenAddress).transferFrom(msg.sender, address(this), _amount);
   }
@@ -47,7 +51,8 @@ contract DEXWallet is Ownable {
     balances[msg.sender][ETH] = balances[msg.sender][ETH].add(_value);
   }
 
-  function withdraw (bytes32 _ticker, uint _amount) external tokenExists(_ticker) {
+  function withdraw (string memory ticker_, uint _amount) external tokenExists(ticker_) {
+    bytes32 _ticker = _keccak256(ticker_);
     require(balances[msg.sender][_ticker] >= _amount, "Insufficient balance");
 
     balances[msg.sender][_ticker] = balances[msg.sender][_ticker].sub(_amount);
@@ -60,7 +65,8 @@ contract DEXWallet is Ownable {
     }
   }
 
-  function getBalance(bytes32 _ticker) public view returns(uint) {
+  function getBalance(string memory ticker_) public view returns(uint) {
+    bytes32 _ticker = _keccak256(ticker_);
     return balances[msg.sender][_ticker];
   }
 

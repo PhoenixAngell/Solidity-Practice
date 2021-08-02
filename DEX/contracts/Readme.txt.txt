@@ -1,0 +1,3 @@
+This is a decentralized exchange, also called a DEX. A DEX allows you trade cryptocurrencies in a decentralized and trustless manner.
+
+The goal of this project is to show proficiency with Solidity smart contract logic, but it is not intended for production use in any way. This is because it uses an orderbook model, which is wildly inefficient and expensive for use on the Ethereum blockchain. Most DEXes on Ethereum use liquidity pools instead of orderbooks.

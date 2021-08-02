@@ -5,11 +5,11 @@ import "./DEXWallet.sol";
 import "./DEXGetters.sol";
 import "./OpenZeppelinDependencies/SafeMath.sol";
 
-contract DEX is DEXWallet, DEXGetters {
+contract DEX is DEXWallet {
   using SafeMath for uint256;
 
   function CreateLimitOrder(string memory ticker_, SIDE _side, uint _amount, uint _price) external {
-    bytes32 _ticker = keccak256(abi.encodePacked(ticker_));
+    bytes32 _ticker = _keccak256(ticker_);
     if (_side == SIDE.SELL){
       require(balances[msg.sender][_ticker] >= _amount, "Insufficient tokens");
     }
@@ -28,15 +28,16 @@ contract DEX is DEXWallet, DEXGetters {
   }
 
   function CreateMarketOrder(string memory ticker_, SIDE _side, uint256 _amount) external {
-    bytes32 _ticker = keccak256(abi.encodePacked(ticker_));
+    bytes32 _ticker = _keccak256(ticker_);
     SIDE limitSide;
-    if(_side == SIDE.SELL){
+
+    if (_side == SIDE.SELL){
       require(balances[msg.sender][_ticker] >= _amount, "Insufficient token balance");
       require(orderBook[_ticker][SIDE.BUY].length > 0, "No orders exist");
       limitSide = SIDE.BUY;
     }
-    else if(_side == SIDE.BUY){
-      require(balances[msg.sender][ETH] >= _marketBuyCost(_ticker, _amount), "Insufficient ETH");
+    if (_side == SIDE.BUY){
+      require(balances[msg.sender][ETH] >= _marketBuyCost(ticker_, _amount), "Insufficient ETH");
       require(orderBook[_ticker][SIDE.SELL].length > 0, "No orders exist");
       limitSide = SIDE.SELL;
     }
@@ -46,7 +47,6 @@ contract DEX is DEXWallet, DEXGetters {
   }
 
   function _fillOrder(bytes32 _ticker, SIDE limitSide, uint _amount) internal {
-
     uint orderRemaining = _amount;
     address seller;
     address buyer;
@@ -54,6 +54,7 @@ contract DEX is DEXWallet, DEXGetters {
 
     Order[] storage _order = orderBook[_ticker][limitSide];
 
+    //Set buyers and sellers;
     if (limitSide == SIDE.BUY){
       seller = msg.sender;
       buyer = _order[i].trader;
@@ -63,7 +64,8 @@ contract DEX is DEXWallet, DEXGetters {
       buyer = msg.sender;
     }
 
-    for (i = 0; i <= _order.length - 1; i++) {
+    //Fill order loop;
+    for (i = 0; i < _order.length && orderRemaining > 0; i++) {
       uint limitAmount = _order[i].amount;
 
       //orderRemaining < limitAmount
@@ -85,21 +87,32 @@ contract DEX is DEXWallet, DEXGetters {
         orderRemaining = orderRemaining.sub(limitAmount);
         _order[i].amount = 0;
 
-        }
-        if (i == _order.length - 1 && orderRemaining > 0) {
-          orderRemaining = 0;
+        //if last order on orderbook, then break;
+        if (i == _order.length - 1) {
           break;
-          }
         }
+      }
+    }
 
-        for (i = _order.length - 1; i > 0; i--) {
-          if (_order[i].amount == 0) {
-            _removeOrder(_ticker, limitSide, i);
-          }
-          if (i == 1) {
-            _removeOrder(_ticker, limitSide, 0);
-          }
-        }
+/*
+    for (i = _order.length - 1; i > 0; i--) {
+      if (_order[i].amount == 0) {
+        _removeOrder(_ticker, limitSide, i);
+      }
+      if (i == 1) {
+        _removeOrder(_ticker, limitSide, 0);
+      }
+    }
+*/
+    //Cleanup loop, purges filled limit orders;
+    for (i = _order.length; i > 0; i--) {
+      if (_order[i - 1].amount == 0) {
+        _removeOrder(_ticker, limitSide, i - 1);
+        /*if (i == 1) {
+            break;
+        }*/
+      }
+    }
   }
 
 
@@ -112,7 +125,7 @@ contract DEX is DEXWallet, DEXGetters {
   }
 
   function RemoveOrder(string memory ticker_, SIDE _side, uint _ID) external {
-    bytes32 _ticker = keccak256(abi.encodePacked(ticker_));
+    bytes32 _ticker = _keccak256(ticker_);
     Order[] memory removedOrder = orderBook[_ticker][_side];
     uint _index = _findOrderIndex(_ID, _ticker, _side);
 
@@ -123,16 +136,16 @@ contract DEX is DEXWallet, DEXGetters {
   function _removeOrder(bytes32 _ticker, SIDE _side, uint _index) internal {
     Order[] storage _orderBook = orderBook[_ticker][_side];
 
-    if (_index == _orderBook.length - 1) {
-      _orderBook.pop();
-    }
-
-    else if (_index < _orderBook.length - 1){
+    if (_index < _orderBook.length - 1){
       Order memory newEntry = _orderBook[_orderBook.length - 1];
       _orderBook[_index] = newEntry;
       _orderBook.pop();
       _orderRemoved = true;
       _sort(_ticker, _side, _orderRemoved);
+    }
+
+    else if (_index == _orderBook.length - 1) {
+      _orderBook.pop();
     }
   }
 

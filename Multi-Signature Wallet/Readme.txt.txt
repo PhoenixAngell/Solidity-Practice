@@ -1,0 +1,3 @@
+This is a multi-signature wallet that handles ether (ETH) cryptocurrency. It does not handle ERC20 tokens, and is a very basic multi-sig wallet.
+
+A multi-sig wallet is a contract which holds money used by a group/team of people, each one owns a unique Ethereum address. Every transfer must be approved by multiple signatures from authorized addresses. This allows a team of developers who have never met each other before to own and work on a project without fear of a single bad actor stealing all the money and disappearing.

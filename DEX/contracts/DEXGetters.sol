@@ -28,60 +28,67 @@ Order[] orderbook;
 //bytes32 is ticker symbol, and SIDE is BUY/SELL enum;
   mapping(bytes32 => mapping(SIDE => Order[])) public orderBook;
   string errorMsg = "Orderbook empty";
-  
+
   //Returns bytes32 of any string;
-  function _keccak256(string memory _input) external pure returns (bytes32 _output) {
+  function _keccak256(string memory _input) public pure returns (bytes32 _output) {
       _output = keccak256(abi.encodePacked(_input));
   }
 
   //Getter function to retrieve orderbook for ticker/side;
-    function getOrderBook(bytes32 _ticker, SIDE _side) public view returns(Order[] memory) {
+    function getOrderBook(string memory ticker_, SIDE _side) public view returns(Order[] memory) {
+      bytes32 _ticker = _keccak256(ticker_);
       require(orderBook[_ticker][_side].length > 0, errorMsg);
       return orderBook[_ticker][_side];
     }
-    function getOrderID(bytes32 _ticker, SIDE _side, uint _index) public view returns(uint) {
+    function getOrderID(string memory ticker_, SIDE _side, uint _index) public view returns(uint) {
+      bytes32 _ticker = _keccak256(ticker_);
       Order[] memory _order = orderBook[_ticker][_side];
       return _order[_index].id;
     }
 
-    function getOrderBookLength(bytes32 _ticker, SIDE _side) public view returns(uint) {
+    function getOrderBookLength(string memory ticker_, SIDE _side) public view returns(uint) {
+      bytes32 _ticker = _keccak256(ticker_);
       return orderBook[_ticker][_side].length;
     }
 
   //Getter function to retrieve order token amount;
-    function getOrderAmount(bytes32 _ticker, SIDE _side, uint _index) public view returns(uint256) {
+    function getOrderAmount(string memory ticker_, SIDE _side, uint _index) public view returns(uint256) {
+      bytes32 _ticker = _keccak256(ticker_);
       require(orderBook[_ticker][_side].length > 0, errorMsg);
       Order[] memory ORDER = orderBook[_ticker][_side];
       return ORDER[_index].amount;
     }
 
   //Getter function to retrieve order's ETH price per token;
-    function getLimitPrice(bytes32 _ticker, SIDE _side, uint _index) public view returns(uint256) {
+    function getLimitPrice(string memory ticker_, SIDE _side, uint _index) public view returns(uint256) {
+      bytes32 _ticker = _keccak256(ticker_);
       require(orderBook[_ticker][_side].length > 0, errorMsg);
       Order[] memory ORDER = orderBook[_ticker][_side];
       return ORDER[_index].price;
     }
 
   //Getter function to retrieve order's total ETH price;
-    function getOrderPrice(bytes32 _ticker, SIDE _side, uint _index) public view returns(uint256) {
+    function getOrderPrice(string memory ticker_, SIDE _side, uint _index) public view returns(uint256) {
+      bytes32 _ticker = _keccak256(ticker_);
       require(orderBook[_ticker][_side].length > 0, errorMsg);
-      uint limitPrice = getLimitPrice(_ticker, _side, _index);
-      uint orderAmount = getOrderAmount(_ticker, _side, _index);
+      uint limitPrice = getLimitPrice(ticker_, _side, _index);
+      uint orderAmount = getOrderAmount(ticker_, _side, _index);
       return limitPrice.mul(orderAmount);
       }
 
   //Getter function for calculating total ETH cost of a market order;
-    function _marketBuyCost(bytes32 _ticker, uint256 _amount) public view returns (uint orderCost) {
+    function _marketBuyCost(string memory ticker_, uint256 _amount) public view returns (uint orderCost) {
+      bytes32 _ticker = _keccak256(ticker_);
       Order[] memory tempORDER = orderBook[_ticker][SIDE.SELL];
       orderCost = 0;
       if(tempORDER.length == 0) {
         return orderCost;
       }
       else {
+        string memory ticker = ticker_;
         for (uint i = 0; _amount >= 0; i++) {
-          //tempORDER[i];
           if (_amount >= tempORDER[i].amount) {
-            uint fillPrice = getOrderPrice(_ticker, SIDE.SELL, i);
+            uint fillPrice = getOrderPrice(ticker, SIDE.SELL, i);
             orderCost = orderCost.add(fillPrice);
             _amount = _amount.sub(tempORDER[i].amount);
           }
@@ -91,9 +98,24 @@ Order[] orderbook;
             orderCost = orderCost.add(partialFillPrice);
             break;
           }
-          if (_amount == 0) { break; }
+          if (i == tempORDER.length - 1) {
+            break;
+          }
         }
         return orderCost;
+      }
+    }
+
+    //Returns total amount of orderbook;
+    //Used for orders that clear out orderbook;
+    function _getOrderbookAmount(string memory ticker_, SIDE _side) public view returns (uint256 totalAmount) {
+      bytes32 _ticker = _keccak256(ticker_);
+      Order[] memory _order = orderBook[_ticker][_side];
+      totalAmount = 0;
+      uint orderAmount;
+      for (uint i = 0; i < _order.length; i++) {
+        orderAmount = _order[i].amount;
+        totalAmount = totalAmount.add(orderAmount);
       }
     }
 
